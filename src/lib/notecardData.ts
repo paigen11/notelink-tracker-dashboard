@@ -20,6 +20,7 @@ export async function fetchNotecardData(startDate?: number) {
     },
   });
   const eventData = await res.json();
+  eventArray = eventData.events;
   while (eventData.has_more) {
     const res = await fetch(
       `https://api.notefile.net/v1/projects/${process.env.NOTEHUB_PROJECT_ID}/events?since=${eventData.through}`,

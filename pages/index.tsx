@@ -12,6 +12,8 @@ import useInterval from "../src/hooks/useInterval";
 import { convertCelsiusToFahrenheit } from "../src/util/helpers";
 import Loader from "../src/components/Loader";
 import EventTable from "../src/components/EventTable";
+import { useNotecardSettings } from "../src/hooks/useNotecardSettings";
+import config from "../src/util/notehub-config";
 import styles from "../styles/Home.module.scss";
 
 type dataProps = {
@@ -44,13 +46,12 @@ export default function Home({ data }: { data: dataProps[] }) {
 
   const router = useRouter();
 
-  // h/t to Josh Comeau for this stroke of brilliance: https://www.joshwcomeau.com/nextjs/refreshing-server-side-props/
   const refreshData = () => {
     router.replace(router.asPath, router.asPath, { scroll: false });
     setIsRefreshing(true);
   };
 
-  const [lngLatCoords, setLngLatCoords] = useState<number[][]>([]);
+  // const [lngLatCoords, setLngLatCoords] = useState<number[][]>([]);
   const [lastPosition, setLastPosition] = useState<[number, number]>([
     33.82854810044288, -84.32526648205214,
   ]);
@@ -67,11 +68,18 @@ export default function Home({ data }: { data: dataProps[] }) {
   >([]);
   const [eventTableData, setEventTableData] = useState<dataProps[]>([]);
 
+  // get notecardEnvVars to determine if Notecard is currently in SOS Mode based on _gps_secs interval
+  const { data: notecardEnvVars, error } = useNotecardSettings();
+  const [isSosModeEnabled, setIsSosModeEnabled] = useState<boolean>(false);
+  const [sosCoords, setSosCoords] = useState<number[][]>([]);
+  const [sosModeStartTime, setSosModeStartTime] = useState<number>(undefined);
+
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   // configurable via next.config.js settings
+  const { defaultRefreshInterval } = config;
   const [delayTime, setDelayTime] = useState<number>(
-    Number(process.env.REFRESH_INTERVAL)
+    Number(defaultRefreshInterval)
   );
 
   useInterval(() => {
@@ -79,8 +87,15 @@ export default function Home({ data }: { data: dataProps[] }) {
   }, delayTime);
 
   useEffect(() => {
-    const lngLatArray: number[][] = [];
+    if (notecardEnvVars?.data.environment_variables?.tags === "sos-mode") {
+      setIsSosModeEnabled(true);
+      setDelayTime(60000);
+    }
+  }, notecardEnvVars);
+
+  useEffect(() => {
     const latLngArray: [number, number][] = [];
+    const sosLngLatArray: number[][] = [];
     const temperatureDataArray: {
       date: string;
       shortenedDate: string;
@@ -99,8 +114,8 @@ export default function Home({ data }: { data: dataProps[] }) {
           return Number(a.captured) - Number(b.captured);
         })
         .map((event) => {
-          let lngLatCoords: number[] = [];
           let latLngCoords: [number, number] = [0, 1];
+          let sosLngLatCoords: number[] = [];
           const temperatureObj = {
             date: dayjs(event.captured).format("MMM D, YYYY h:mm A"),
             shortenedDate: dayjs(event.captured).format("MM/DD/YYYY"),
@@ -113,27 +128,60 @@ export default function Home({ data }: { data: dataProps[] }) {
             voltage: Number(event.body.voltage.toFixed(2)),
           };
           voltageDataArray.push(voltageObj);
-          if (event.gps_location !== null) {
-            lngLatCoords = [
-              event.gps_location?.longitude,
-              event.gps_location?.latitude,
-            ];
-            latLngCoords = [
-              event.gps_location?.latitude,
-              event.gps_location?.longitude,
-            ];
-          } else if (event.tower_location) {
-            lngLatCoords = [
-              event.tower_location?.longitude,
-              event.tower_location?.latitude,
-            ];
-            latLngCoords = [
-              event.tower_location?.latitude,
-              event.tower_location?.longitude,
-            ];
+          //todo dry this up
+          if (!isSosModeEnabled) {
+            if (event.gps_location !== null) {
+              latLngCoords = [
+                event.gps_location?.latitude,
+                event.gps_location?.longitude,
+              ];
+            } else if (event.tower_location) {
+              latLngCoords = [
+                event.tower_location?.latitude,
+                event.tower_location?.longitude,
+              ];
+            }
+            latLngArray.push(latLngCoords);
+          } else {
+            const localSosTimestamp = localStorage.getItem("sos-timestamp");
+            setSosModeStartTime(localSosTimestamp);
+            if (Date.parse(event.captured) >= Date.parse(sosModeStartTime)) {
+              if (event.gps_location !== null) {
+                sosLngLatCoords = [
+                  event.gps_location?.latitude,
+                  event.gps_location?.longitude,
+                ];
+                latLngCoords = [
+                  event.gps_location?.latitude,
+                  event.gps_location?.longitude,
+                ];
+              } else if (event.tower_location) {
+                sosLngLatCoords = [
+                  event.tower_location?.latitude,
+                  event.tower_location?.longitude,
+                ];
+                latLngCoords = [
+                  event.tower_location?.latitude,
+                  event.tower_location?.longitude,
+                ];
+              }
+              sosLngLatArray.push(sosLngLatCoords);
+              latLngArray.push(latLngCoords);
+            } else {
+              if (event.gps_location !== null) {
+                latLngCoords = [
+                  event.gps_location?.latitude,
+                  event.gps_location?.longitude,
+                ];
+              } else if (event.tower_location) {
+                latLngCoords = [
+                  event.tower_location?.latitude,
+                  event.tower_location?.longitude,
+                ];
+              }
+              latLngArray.push(latLngCoords);
+            }
           }
-          lngLatArray.push(lngLatCoords);
-          latLngArray.push(latLngCoords);
         });
       const lastEvent = data.at(-1);
       let lastCoords: [number, number] = [0, 1];
@@ -152,12 +200,35 @@ export default function Home({ data }: { data: dataProps[] }) {
       const timestamp = dayjs(lastEvent?.captured).format("MMM D, YYYY h:mm A");
       setLatestTimestamp(timestamp);
     }
-    setLngLatCoords(lngLatArray);
+    if (sosLngLatArray.length > 0) {
+      setSosCoords(sosLngLatArray);
+    }
     setLatLngMarkerPositions(latLngArray);
     setTempData(temperatureDataArray);
     setVoltageData(voltageDataArray);
     setIsRefreshing(false);
-  }, [data]);
+  }, [data, isSosModeEnabled, delayTime, sosModeStartTime]);
+
+  const toggleSosMode = async () => {
+    const newSosState = !isSosModeEnabled;
+    setIsSosModeEnabled(newSosState);
+    // todo clean this up and send timestamp either to local storage or notehub
+    if (newSosState === true) {
+      const response = await fetch("/api/notehub/deviceSettings", {
+        method: "PUT",
+      });
+      localStorage.setItem("sos-timestamp", new Date());
+      await response.json();
+      setDelayTime(60000);
+    } else {
+      localStorage.removeItem("sos-timestamp");
+      const response = await fetch("/api/notehub/deviceSettings", {
+        method: "DELETE",
+      });
+      await response.json();
+      setDelayTime(defaultRefreshInterval);
+    }
+  };
 
   interface row {
     [row: { string }]: any;
@@ -210,13 +281,17 @@ export default function Home({ data }: { data: dataProps[] }) {
   return (
     <div className={styles.container}>
       <Head>
-        <title>React Blues Wireless Asset Tracker</title>
+        <title>Notelink Tracker Dashboard</title>
         <meta name="description" content="Generated by create next app" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
       <main className={styles.main}>
-        <h1 className={styles.title}>React Blues Wireless Asset Tracker</h1>
+        <h1 className={styles.title}>Notelink Tracker Dashboard</h1>
+        <button className={styles.sosButton} onClick={toggleSosMode}>
+          SOS Mode
+        </button>
+        {isSosModeEnabled ? <p>SOS Mode Currently On</p> : null}
         {!isRefreshing ? (
           <>
             <div className={styles.grid}>
@@ -224,10 +299,11 @@ export default function Home({ data }: { data: dataProps[] }) {
             </div>
             <div className={styles.map}>
               <MapWithNoSSR
-                coords={lngLatCoords}
+                coords={latLngMarkerPositions}
                 lastPosition={lastPosition}
                 markers={latLngMarkerPositions}
                 latestTimestamp={latestTimestamp}
+                sosCoords={sosCoords}
               />
             </div>
             <div className={styles.grid}>
@@ -249,7 +325,6 @@ export default function Home({ data }: { data: dataProps[] }) {
 
 export const getServerSideProps: GetServerSideProps = async () => {
   // we have to pull map data here before rendering the component to draw the lines between GPS data points
-  // todo make this configurable to different start dates
   const data = await fetchNotecardData();
   return { props: { data } };
 };

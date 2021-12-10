@@ -3,8 +3,8 @@ import {
   TileLayer,
   Marker,
   Popup,
-  GeoJSON,
   CircleMarker,
+  Polyline,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css";
@@ -16,18 +16,18 @@ const Map = ({
   lastPosition,
   markers,
   latestTimestamp,
+  sosCoords,
 }: {
   coords: number[][];
   lastPosition: [number, number];
   markers: [number, number][];
   latestTimestamp: string;
+  sosCoords?: number[][];
 }) => {
-  const geoJsonObj: any = [
-    {
-      type: "LineString",
-      coordinates: coords,
-    },
-  ];
+  // console.log("sos coords", sosCoords);
+  // console.log("coords", coords);
+  const geoJsonObj: any = coords;
+  const sosGeoJsonObj: any = sosCoords;
 
   const mapMarkers = markers.map((latLng, i) => (
     <CircleMarker key={i} center={latLng} fillColor="navy" />
@@ -53,7 +53,8 @@ const Map = ({
             <br />
             {latestTimestamp}
           </Popup>
-          <GeoJSON data={geoJsonObj}></GeoJSON>
+          <Polyline pathOptions={{ color: "blue" }} positions={geoJsonObj} />
+          <Polyline pathOptions={{ color: "red" }} positions={sosGeoJsonObj} />
           {mapMarkers}
         </Marker>
       </MapContainer>
