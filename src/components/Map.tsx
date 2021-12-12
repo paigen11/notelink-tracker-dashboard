@@ -24,8 +24,6 @@ const Map = ({
   latestTimestamp: string;
   sosCoords?: number[][];
 }) => {
-  // console.log("sos coords", sosCoords);
-  // console.log("coords", coords);
   const geoJsonObj: any = coords;
   const sosGeoJsonObj: any = sosCoords;
 
@@ -38,7 +36,7 @@ const Map = ({
       <h2>Asset Tracker Map</h2>
       <MapContainer
         center={lastPosition}
-        zoom={12}
+        zoom={14}
         className={styles.container}
       >
         <TileLayer
@@ -48,8 +46,8 @@ const Map = ({
           <Popup>
             Last recorded position:
             <br />
-            {lastPosition[0].toFixed(3)}&#176;,&nbsp;
-            {lastPosition[1].toFixed(3)}&#176;
+            {lastPosition[0].toFixed(6)}&#176;,&nbsp;
+            {lastPosition[1].toFixed(6)}&#176;
             <br />
             {latestTimestamp}
           </Popup>

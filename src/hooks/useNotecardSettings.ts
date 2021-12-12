@@ -11,13 +11,9 @@ const fetcher = async (url: string) => {
 };
 
 export const useNotecardSettings = () => {
-  const { data, error } = useSWR(
-    `/api/notehub/deviceSettings`,
-    fetcher
-    // {
-    //   refreshInterval: 10000,
-    // }
-  );
+  const { data, error } = useSWR(`/api/notehub/deviceSettings`, fetcher, {
+    refreshInterval: 15000,
+  });
 
   return { data, error };
 };

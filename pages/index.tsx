@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { GetServerSideProps } from "next";
 import { useRouter } from "next/router";
 import dayjs from "dayjs";
+import axios from "axios";
 import { fetchNotecardData } from "../src/lib/notecardData";
 import TempChart from "../src/components/TempChart";
 import VoltageChart from "../src/components/VoltageChart";
@@ -87,15 +88,18 @@ export default function Home({ data }: { data: dataProps[] }) {
   }, delayTime);
 
   useEffect(() => {
-    if (notecardEnvVars?.data.environment_variables?.tags === "sos-mode") {
+    if (notecardEnvVars?.data.environment_variables?._gps_secs === "15") {
+      console.log("SOS mode enabled");
       setIsSosModeEnabled(true);
-      setDelayTime(60000);
+      setDelayTime(120000);
+    } else {
+      console.log("SOS mode disabled");
     }
-  }, notecardEnvVars);
+  }, [notecardEnvVars]);
 
   useEffect(() => {
     const latLngArray: [number, number][] = [];
-    const sosLngLatArray: number[][] = [];
+    const sosLatLngArray: [number, number][] = [];
     const temperatureDataArray: {
       date: string;
       shortenedDate: string;
@@ -115,7 +119,7 @@ export default function Home({ data }: { data: dataProps[] }) {
         })
         .map((event) => {
           let latLngCoords: [number, number] = [0, 1];
-          let sosLngLatCoords: number[] = [];
+          let sosLatLngCoords: [number, number] = [];
           const temperatureObj = {
             date: dayjs(event.captured).format("MMM D, YYYY h:mm A"),
             shortenedDate: dayjs(event.captured).format("MM/DD/YYYY"),
@@ -128,7 +132,6 @@ export default function Home({ data }: { data: dataProps[] }) {
             voltage: Number(event.body.voltage.toFixed(2)),
           };
           voltageDataArray.push(voltageObj);
-          //todo dry this up
           if (!isSosModeEnabled) {
             if (event.gps_location !== null) {
               latLngCoords = [
@@ -145,9 +148,9 @@ export default function Home({ data }: { data: dataProps[] }) {
           } else {
             const localSosTimestamp = localStorage.getItem("sos-timestamp");
             setSosModeStartTime(localSosTimestamp);
-            if (Date.parse(event.captured) >= Date.parse(sosModeStartTime)) {
+            if (Date.parse(event.captured) >= Date.parse(localSosTimestamp)) {
               if (event.gps_location !== null) {
-                sosLngLatCoords = [
+                sosLatLngCoords = [
                   event.gps_location?.latitude,
                   event.gps_location?.longitude,
                 ];
@@ -156,7 +159,7 @@ export default function Home({ data }: { data: dataProps[] }) {
                   event.gps_location?.longitude,
                 ];
               } else if (event.tower_location) {
-                sosLngLatCoords = [
+                sosLatLngCoords = [
                   event.tower_location?.latitude,
                   event.tower_location?.longitude,
                 ];
@@ -165,7 +168,7 @@ export default function Home({ data }: { data: dataProps[] }) {
                   event.tower_location?.longitude,
                 ];
               }
-              sosLngLatArray.push(sosLngLatCoords);
+              sosLatLngArray.push(sosLatLngCoords);
               latLngArray.push(latLngCoords);
             } else {
               if (event.gps_location !== null) {
@@ -200,8 +203,8 @@ export default function Home({ data }: { data: dataProps[] }) {
       const timestamp = dayjs(lastEvent?.captured).format("MMM D, YYYY h:mm A");
       setLatestTimestamp(timestamp);
     }
-    if (sosLngLatArray.length > 0) {
-      setSosCoords(sosLngLatArray);
+    if (sosLatLngArray.length > 0) {
+      setSosCoords(sosLatLngArray);
     }
     setLatLngMarkerPositions(latLngArray);
     setTempData(temperatureDataArray);
@@ -211,22 +214,16 @@ export default function Home({ data }: { data: dataProps[] }) {
 
   const toggleSosMode = async () => {
     const newSosState = !isSosModeEnabled;
-    setIsSosModeEnabled(newSosState);
-    // todo clean this up and send timestamp either to local storage or notehub
     if (newSosState === true) {
-      const response = await fetch("/api/notehub/deviceSettings", {
-        method: "PUT",
-      });
+      await axios.put("/api/notehub/deviceSettings");
       localStorage.setItem("sos-timestamp", new Date());
-      await response.json();
-      setDelayTime(60000);
+      setDelayTime(120000);
+      setIsSosModeEnabled(newSosState);
     } else {
       localStorage.removeItem("sos-timestamp");
-      const response = await fetch("/api/notehub/deviceSettings", {
-        method: "DELETE",
-      });
-      await response.json();
+      await axios.delete("/api/notehub/deviceSettings");
       setDelayTime(defaultRefreshInterval);
+      setIsSosModeEnabled(newSosState);
     }
   };
 
@@ -260,14 +257,27 @@ export default function Home({ data }: { data: dataProps[] }) {
             accessor: "body.status",
           },
           {
+            Header: "GPS Location",
+            accessor: "gps_location",
+            Cell: (row) => {
+              return (
+                <span>
+                  {row.row.original.gps_location.latitude.toFixed(6)}
+                  &#176;,&nbsp;
+                  {row.row.original.gps_location.longitude.toFixed(6)}&#176;
+                </span>
+              );
+            },
+          },
+          {
             Header: "Cell Tower Location",
             accessor: "tower_location",
             Cell: (row) => {
               return (
                 <span>
-                  {row.row.original.tower_location.latitude.toFixed(2)}
+                  {row.row.original.tower_location.latitude.toFixed(3)}
                   &#176;,&nbsp;
-                  {row.row.original.tower_location.longitude.toFixed(2)}&#176;
+                  {row.row.original.tower_location.longitude.toFixed(3)}&#176;
                 </span>
               );
             },
