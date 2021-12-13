@@ -4,6 +4,8 @@ This is an asset tracking dashboard to display the information captured from Blu
 
 This project was inspired when [my parents' car was stolen](https://twitter.com/pniedri/status/1464414605145522179?s=20) out of their driveway the day after Thanksgiving, and although they did not have LoJack, there happened to be a Notecard sitting in the backseat, which we followed via the dashboard until the Notecard was discovered by the thieves and dumped in a park.
 
+https://user-images.githubusercontent.com/20400845/145849873-04c8fb07-1df0-47e4-b77b-752fa80f11b2.mp4
+
 ## Project Basics
 
 Notelink (a play on the name Starlink which is Subaru's version of OnStar) is a Next.js app which serves up a pre-configured dashboard complete with Leaflet.js map to plot Notecard coordinates as they're relayed to Notehub, Recharts charts displaying Notecard's current voltage and temperature, and a react-table event list so a user can see the frequency with which tracking events are being recorded.
