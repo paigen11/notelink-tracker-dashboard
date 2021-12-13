@@ -11,6 +11,7 @@ const fetcher = async (url: string) => {
 };
 
 export const useNotecardSettings = () => {
+  // this refetches notecard settings from Notehub every 15 secs to check if the UI still needs to be in SOS mode or not
   const { data, error } = useSWR(`/api/notehub/deviceSettings`, fetcher, {
     refreshInterval: 15000,
   });
