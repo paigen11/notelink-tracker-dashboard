@@ -8,7 +8,7 @@ https://user-images.githubusercontent.com/20400845/145849873-04c8fb07-1df0-47e4-
 
 ## Project Basics
 
-Notelink (a play on the name Starlink which is Subaru's version of OnStar) is a Next.js app which serves up a pre-configured dashboard complete with Leaflet.js map to plot Notecard coordinates as they're relayed to Notehub, Recharts charts displaying Notecard's current voltage and temperature, and a react-table event list so a user can see the frequency with which tracking events are being recorded.
+Notelink (a play on the name Starlink which is Subaru's version of OnStar) is a Next.js app which serves up a pre-configured dashboard complete with Leaflet.js map and Mapbox overlay to plot Notecard coordinates as they're relayed to Notehub, Recharts charts displaying Notecard's current voltage and temperature, and a react-table event list so a user can see the frequency with which tracking events are being recorded.
 
 Notelink is preconfigured to poll for new events from the Notehub project every 5 minutes, and re-render the latest data on the dashboard.
 
@@ -27,6 +27,7 @@ When the crisis has been averted (and hopefully the vehicle recovered in good co
 - [Recharts Docs](https://recharts.org/en-US/) - Introduction to Recharts composable chart library
 - [React Leaflet Docs](https://react-leaflet.js.org/docs/start-introduction/) - React Leaflet library introduction
 - [React Table Docs](https://react-table.tanstack.com/docs/overview) - React Table getting started and example documentation
+- [Mapbox Docs](https://docs.mapbox.com/help/getting-started/access-tokens/) - How to generate Mapbox access token and select view
 
 ## Getting Started
 
@@ -73,6 +74,7 @@ NOTEHUB_PROJECT_ID=APP_ID_GOES_HERE
 NOTEHUB_TOKEN=NOTEHUB_GENERATED_TOKEN_GOES_HERE
 NOTECARD_DEVICE_ID=DEVICE_ID GOES_HERE
 REFRESH_INTERVAL=300000
+MAPBOX_ACCESS_TOKEN=MAPBOX_ACCESS_TOKEN_GOES_HERE_IF_NOT_USING_MINE
 ```
 
 5. Run `npm run dev` in the terminal to start the server
@@ -109,5 +111,6 @@ Since this was made in just over a work day's worth of time, there are still thi
 - Use something more than local storage (either Notehub env vars or a cloud database) to persist when SOS Mode is enabled. In order to be more commercially viable, local storage to keep track of when SOS Mode was started is not good enough - it was quick and easy to get up and running.
 - Allow different timeframes of events to be queried from Notehub. At the moment, every single event for a project is pulled from Notehub and displayed on the dashboard, but that may not be useful depending on the situation. Give users a date picker so they can specify date ranges for the events they want to see in the dashboard.
 - Add a persistent database to hold events after the initial fetch of data from Notehub. Notehub charges users after a certain amount of events are sent out of the application per month (5,000, I believe), so it's not the most cost effective to continue to poll all events from Notehub every time. For a larger product, I'd invest in some sort of a cloud database that could both pull all the initial data from Notehub and then possibly also receive events routed from Notehub as they are recorded there to cut down on costs.
+- Another interesting thing would be handling data coming in from more than one Notecard (i.e. a fleet of connected vehicles moving around a map)
 
 ---
