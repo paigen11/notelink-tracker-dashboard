@@ -2,19 +2,15 @@
 import { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import dynamic from "next/dynamic";
-import { GetServerSideProps } from "next";
-import { useRouter } from "next/router";
+import { GetStaticProps } from "next";
 import dayjs from "dayjs";
 import axios from "axios";
 import { fetchNotecardData } from "../src/lib/notecardData";
 import TempChart from "../src/components/TempChart";
 import VoltageChart from "../src/components/VoltageChart";
-import useInterval from "../src/hooks/useInterval";
 import { convertCelsiusToFahrenheit } from "../src/util/helpers";
-import Loader from "../src/components/Loader";
 import EventTable from "../src/components/EventTable";
 import { useNotecardSettings } from "../src/hooks/useNotecardSettings";
-import config from "../src/util/notehub-config";
 import styles from "../styles/Home.module.scss";
 
 type dataProps = {
@@ -45,14 +41,6 @@ export default function Home({ data }: { data: dataProps[] }) {
     ssr: false,
   });
 
-  const router = useRouter();
-
-  const refreshData = () => {
-    router.replace(router.asPath, router.asPath, { scroll: false });
-    setIsRefreshing(true);
-  };
-
-  // const [lngLatCoords, setLngLatCoords] = useState<number[][]>([]);
   const [lastPosition, setLastPosition] = useState<[number, number]>([
     33.82854810044288, -84.32526648205214,
   ]);
@@ -75,23 +63,10 @@ export default function Home({ data }: { data: dataProps[] }) {
   const [sosCoords, setSosCoords] = useState<number[][]>([]);
   const [sosModeStartTime, setSosModeStartTime] = useState<number>(undefined);
 
-  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-
-  // configurable via next.config.js settings
-  const { defaultRefreshInterval } = config;
-  const [delayTime, setDelayTime] = useState<number>(
-    Number(defaultRefreshInterval)
-  );
-
-  useInterval(() => {
-    refreshData();
-  }, delayTime);
-
   useEffect(() => {
     if (notecardEnvVars?.data.environment_variables?._gps_secs === "15") {
       console.log("SOS mode enabled");
       setIsSosModeEnabled(true);
-      setDelayTime(120000);
     } else {
       console.log("SOS mode disabled");
     }
@@ -209,20 +184,17 @@ export default function Home({ data }: { data: dataProps[] }) {
     setLatLngMarkerPositions(latLngArray);
     setTempData(temperatureDataArray);
     setVoltageData(voltageDataArray);
-    setIsRefreshing(false);
-  }, [data, isSosModeEnabled, delayTime, sosModeStartTime]);
+  }, [data, isSosModeEnabled, sosModeStartTime]);
 
   const toggleSosMode = async () => {
     const newSosState = !isSosModeEnabled;
     if (newSosState === true) {
       await axios.put("/api/notehub/deviceSettings");
       localStorage.setItem("sos-timestamp", new Date());
-      setDelayTime(120000);
       setIsSosModeEnabled(newSosState);
     } else {
       localStorage.removeItem("sos-timestamp");
       await axios.delete("/api/notehub/deviceSettings");
-      setDelayTime(defaultRefreshInterval);
       setIsSosModeEnabled(newSosState);
     }
   };
@@ -302,30 +274,24 @@ export default function Home({ data }: { data: dataProps[] }) {
           SOS Mode
         </button>
         {isSosModeEnabled ? <p>SOS Mode Currently On</p> : null}
-        {!isRefreshing ? (
-          <>
-            <div className={styles.grid}>
-              <TempChart tempData={tempData} />
-            </div>
-            <div className={styles.map}>
-              <MapWithNoSSR
-                coords={latLngMarkerPositions}
-                lastPosition={lastPosition}
-                markers={latLngMarkerPositions}
-                latestTimestamp={latestTimestamp}
-                sosCoords={sosCoords}
-              />
-            </div>
-            <div className={styles.grid}>
-              <VoltageChart voltageData={voltageData} />
-            </div>
-            <div className={styles.grid}>
-              <EventTable columns={columns} data={eventTableData} />
-            </div>
-          </>
-        ) : (
-          <Loader />
-        )}
+        <div className={styles.grid}>
+          <TempChart tempData={tempData} />
+        </div>
+        <div className={styles.map}>
+          <MapWithNoSSR
+            coords={latLngMarkerPositions}
+            lastPosition={lastPosition}
+            markers={latLngMarkerPositions}
+            latestTimestamp={latestTimestamp}
+            sosCoords={sosCoords}
+          />
+        </div>
+        <div className={styles.grid}>
+          <VoltageChart voltageData={voltageData} />
+        </div>
+        <div className={styles.grid}>
+          <EventTable columns={columns} data={eventTableData} />
+        </div>
       </main>
 
       <footer className={styles.footer}></footer>
@@ -333,8 +299,10 @@ export default function Home({ data }: { data: dataProps[] }) {
   );
 }
 
-export const getServerSideProps: GetServerSideProps = async () => {
-  // we have to pull map data here before rendering the component to draw the lines between GPS data points
+export const getStaticProps: GetStaticProps = async () => {
+  /* we're able to use Nextjs's ISR (incremental static regneration) 
+  revalidate functionality to re-fetch updated map coords and re-render one a regular interval */
   const data = await fetchNotecardData();
-  return { props: { data } };
+
+  return { props: { data }, revalidate: 120 };
 };

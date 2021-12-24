@@ -10,9 +10,9 @@ https://user-images.githubusercontent.com/20400845/145849873-04c8fb07-1df0-47e4-
 
 Notelink (a play on the name Starlink which is Subaru's version of OnStar) is a Next.js app which serves up a pre-configured dashboard complete with Leaflet.js map and Mapbox overlay to plot Notecard coordinates as they're relayed to Notehub, Recharts charts displaying Notecard's current voltage and temperature, and a react-table event list so a user can see the frequency with which tracking events are being recorded.
 
-Notelink is preconfigured to poll for new events from the Notehub project every 5 minutes, and re-render the latest data on the dashboard.
+Notelink is preconfigured to fetch for new events from Notehub project every 2 minutes, and re-render the latest data on the dashboard.
 
-Notelink is also equipped with a big red button entitle "SOS Mode", which when activated, updates the Notecard's environment variables remotely via Notehub to take GPS location readings every 15 seconds and upload them immediately to Notehub, as opposed to every 6 minutes. When this mode is active, lines between location markers on the map are colored in red instead of blue to be easier to pick out.
+Notelink is also equipped with a big red button entitle "SOS Mode", which when activated, updates the Notecard's environment variables remotely via Notehub to take GPS location readings every 15 seconds and upload them immediately to Notehub, as opposed to every 6 minutes (its default upload time while vehicles are in motion). When this mode is active, lines between location markers on the map are colored in red instead of blue to be easier to pick out.
 
 ![SOS Mode button](https://user-images.githubusercontent.com/20400845/145845319-026a448b-6d3f-4955-95a2-cf1ad3dcb4a8.png)
 
@@ -73,7 +73,6 @@ Below are steps from the Notecard all the way to the software to get your own in
 NOTEHUB_PROJECT_ID=APP_ID_GOES_HERE
 NOTEHUB_TOKEN=NOTEHUB_GENERATED_TOKEN_GOES_HERE
 NOTECARD_DEVICE_ID=DEVICE_ID GOES_HERE
-REFRESH_INTERVAL=300000
 MAPBOX_ACCESS_TOKEN=MAPBOX_ACCESS_TOKEN_GOES_HERE_IF_NOT_USING_MINE
 ```
 
@@ -83,7 +82,7 @@ MAPBOX_ACCESS_TOKEN=MAPBOX_ACCESS_TOKEN_GOES_HERE_IF_NOT_USING_MINE
 
 ![](https://user-images.githubusercontent.com/20400845/145846744-ca380eb3-b9bb-455d-b090-83f82200e198.png)
 
-8. Enable SOS Mode and see events begin to stream in faster, page refreshes happen quicker and newly generated lines between location markers are now red for the duration of the SOS Mode.
+1. Enable SOS Mode and see events begin to stream in more frequently and newly generated lines between location markers are now red for the duration of the SOS Mode.
 
 ![Map with red SOS tracking lines on dashboard](https://user-images.githubusercontent.com/20400845/145845271-2b05a527-0875-4ae7-a879-0cbd381c195a.png)
 
@@ -111,6 +110,6 @@ Since this was made in just over a work day's worth of time, there are still thi
 - Use something more than local storage (either Notehub env vars or a cloud database) to persist when SOS Mode is enabled. In order to be more commercially viable, local storage to keep track of when SOS Mode was started is not good enough - it was quick and easy to get up and running.
 - Allow different timeframes of events to be queried from Notehub. At the moment, every single event for a project is pulled from Notehub and displayed on the dashboard, but that may not be useful depending on the situation. Give users a date picker so they can specify date ranges for the events they want to see in the dashboard.
 - Add a persistent database to hold events after the initial fetch of data from Notehub. Notehub charges users after a certain amount of events are sent out of the application per month (5,000, I believe), so it's not the most cost effective to continue to poll all events from Notehub every time. For a larger product, I'd invest in some sort of a cloud database that could both pull all the initial data from Notehub and then possibly also receive events routed from Notehub as they are recorded there to cut down on costs.
-- Another interesting thing would be handling data coming in from more than one Notecard (i.e. a fleet of connected vehicles moving around a map)
+- Another interesting thing would be handling data coming in from more than one Notecard (i.e. a fleet of connected vehicles moving around a map with different colored lines)
 
 ---

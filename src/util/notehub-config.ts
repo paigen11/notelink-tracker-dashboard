@@ -3,7 +3,6 @@ const config = {
   authToken: process.env.NOTEHUB_TOKEN,
   projectID: process.env.NOTEHUB_PROJECT_ID,
   notecardID: process.env.NOTECARD_DEVICE_ID,
-  defaultRefreshInterval: process.env.REFRESH_INTERVAL,
 };
 
 export default config;
